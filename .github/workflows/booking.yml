@@ -1,0 +1,43 @@
+name: Booking Checker
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 台北 08:00
+    - cron: "0 4 * * *"   # 台北 12:00
+    - cron: "0 9 * * *"   # 台北 17:00
+  workflow_dispatch:      # 可手動執行
+
+jobs:
+  run_booking:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ========================
+      # 安裝 Python + 套件
+      # ========================
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      # ========================
+      # 建立 Google 金鑰檔案（從 Secrets 取出）
+      # ========================
+      - name: Create Google Service Account file
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT }}" > service_account.json
+          echo "${{ secrets.SPREADSHEET_ID }}" > spreadsheet_id
+
+      # ========================
+      # 執行爬蟲
+      # ========================
+      - name: Run booking checker
+        run: python booking_checker_playwright_cloud.py
