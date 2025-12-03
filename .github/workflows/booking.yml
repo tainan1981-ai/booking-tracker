@@ -5,39 +5,57 @@ on:
     - cron: "0 0 * * *"   # 台北 08:00
     - cron: "0 4 * * *"   # 台北 12:00
     - cron: "0 9 * * *"   # 台北 17:00
-  workflow_dispatch:      # 可手動執行
+  workflow_dispatch:      # 可手動觸發
 
 jobs:
   run_booking:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------------------------------------
+      # 1. Checkout
+      # ----------------------------------------------------
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # ========================
-      # 安裝 Python + 套件
-      # ========================
+      # ----------------------------------------------------
+      # 2. Setup Python
+      # ----------------------------------------------------
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"     # pip 快取，加速
 
+      # ----------------------------------------------------
+      # 3. Install dependencies
+      # ----------------------------------------------------
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           playwright install chromium
 
-      # ========================
-      # 建立 Google 金鑰檔案（從 Secrets 取出）
-      # ========================
+      # ----------------------------------------------------
+      # 4. Create Google credentials files (SAFE)
+      # ----------------------------------------------------
       - name: Create Google Service Account file
         run: |
-          echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT }}" > service_account.json
-          echo "${{ secrets.SPREADSHEET_ID }}" > spreadsheet_id
+          printf "%s" "${{ secrets.GOOGLE_SERVICE_ACCOUNT }}" > service_account.json
+          printf "%s" "${{ secrets.SPREADSHEET_ID }}" > spreadsheet_id
 
-      # ========================
-      # 執行爬蟲
-      # ========================
+      # ----------------------------------------------------
+      # 5. Run script
+      # ----------------------------------------------------
       - name: Run booking checker
-        run: python booking_checker_playwright_cloud.py
+        run: |
+          python booking_checker_playwright_cloud.py
+
+      # ----------------------------------------------------
+      # 6. 如果出錯，顯示更多資訊（避免難 debug）
+      # ----------------------------------------------------
+      - name: Show service_account.json if failed (安全無敏感資訊條件)
+        if: failure()
+        run: |
+          echo "🔍 Debug: service_account.json 第一行內容："
+          head -n 1 service_account.json || true
+
